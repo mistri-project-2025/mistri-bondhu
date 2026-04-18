@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===================== LIKES =====================
+    match /likes/{docId} {
+      allow read: if true; // সবাই পড়তে পারবে
+      allow create: if request.auth != null; // logged-in user like দিতে পারবে
+      allow update, delete: if false; // কেউ update/delete পারবে না
+    }
+
+    // ===================== SETTINGS =====================
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== USERS =====================
+    match /users/{userId} {
+      allow read, create: if request.auth != null && request.auth.uid == userId;
+      allow update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== PHONE GATE =====================
+    match /phoneIndex/{phone} {
+      allow read: if request.auth != null; // signup time check
+      allow create: if request.auth != null
+                    && !exists(/databases/$(database)/documents/phoneIndex/$(phone)); // একবারই create হবে
+      allow update, delete: if false; // কোনো overwrite/update/delete হবে না
+    }
+
+    // ===================== PENDING WORKERS =====================
+    match /pendingWorkers/{workerId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read, update: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow read, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== WORKERS =====================
+    match /workers/{workerId} {
+      allow read: if request.auth != null
+                  && resource.data.status == "approved"
+                  && (resource.data.contractEnd == null || resource.data.contractEnd > request.time);
+
+      allow update: if request.auth != null
+                    && request.auth.uid == workerId
+                    && resource.data.status == "approved"
+                    && request.resource.data.diff(resource.data).changedKeys()
+                       .hasOnly(["name","phone","address","experience","categoryId"]);
+
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== PROVIDERS =====================
+    match /providers/{providerId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== FEEDBACKS =====================
+    match /feedbacks/{feedbackId} {
+      allow create: if request.auth != null;
+      allow read: if request.auth != null;
+      allow update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== CONTACTS =====================
+    match /contacts/{contactId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if request.auth != null
+                                  && (resource.data.userId == request.auth.uid
+                                      || request.auth.token.role == "admin");
+    }
+
+    // ===================== CONTRACTS =====================
+    match /contracts/{contractId} {
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+      allow read: if request.auth != null && (resource.data.end == null || resource.data.end > request.time);
+    }
+
+    // ===================== CATEGORIES =====================
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== CALENDAR =====================
+    match /calendar/{workerId}/{eventId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== CALCULATOR =====================
+    match /calculator/{workerId}/{calcId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== AUTO-EXPIRE =====================
+    match /autoExpire/{workerId} {
+      allow read: if request.auth != null && request.auth.token.role in ["admin", "provider"];
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+
+    // ===================== RECORDS =====================
+    match /records/{userId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && request.auth.token.role == "admin";
+    }
+  }
+}
