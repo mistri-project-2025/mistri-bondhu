@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 export default function WorkerCalendar({
   worker,
   approvePendingWorker,
@@ -31,12 +33,22 @@ export default function WorkerCalendar({
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000055" }}>
-      <div style={{ background: "#fff", padding: 20, margin: "10% auto", width: 300 }}>
+      <div
+        style={{
+          background: "#fff",
+          padding: 20,
+          margin: "10% auto",
+          width: 300,
+        }}
+      >
         <h3>{isExtend ? "Extend" : "Approve"}</h3>
 
         <p>Great: {worker.great}</p>
 
-        <select value={mode} onChange={(e) => setMode(e.target.value)}>
+        <select
+          value={mode}
+          onChange={(e) => setMode(e.target.value)}
+        >
           <option value="normal">Normal</option>
           <option value="test">1 Minute Test</option>
         </select>
@@ -45,7 +57,9 @@ export default function WorkerCalendar({
           Submit
         </button>
 
-        <button onClick={onClose}>Close</button>
+        <button onClick={onClose}>
+          Close
+        </button>
       </div>
     </div>
   );
