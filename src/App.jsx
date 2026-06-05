@@ -1,4 +1,3 @@
-// src/App.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 
@@ -7,7 +6,7 @@ import Home from "./pages/Home";
 import RoleSelector from "./pages/auth/RoleSelector";
 import Signup from "./pages/auth/Signup";
 import Login from "./pages/Login";
-import WorkerLogin from "./pages/auth/WorkerLogin";   // ✅ ADDED
+import WorkerLogin from "./pages/auth/WorkerLogin";
 
 // 🚪 Logout
 import Logout from "./pages/settings/Logout";
@@ -31,20 +30,28 @@ import ContractManager from "./pages/admin/ContractManager";
 import AdminLeadHistory from "./pages/admin/AdminLeadHistory";
 import PendingWorkersDebug from "./pages/admin/PendingWorkersDebug";
 
+// 🆕 FOOTER SYSTEM
+import FooterPage from "./pages/FooterPage";
+import AdminFooterContent from "./pages/admin/AdminFooterContent";
+
 export default function App() {
   const { user } = useAuth();
 
   return (
     <Routes>
-      {/* 🌐 Public */}
+
+      {/* 🌐 PUBLIC ROUTES */}
       <Route path="/" element={<Home />} />
       <Route path="/role" element={<RoleSelector />} />
       <Route path="/signup/:role" element={<Signup />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/worker/login" element={<WorkerLogin />} />  {/* ✅ ADDED */}
+      <Route path="/worker/login" element={<WorkerLogin />} />
       <Route path="/logout" element={<Logout />} />
 
-      {/* 🧑‍💼 Provider */}
+      {/* 🆕 FOOTER (USER PAGE) */}
+      <Route path="/footer" element={<FooterPage />} />
+
+      {/* 🧑‍💼 PROVIDER */}
       <Route
         path="/provider/dashboard"
         element={
@@ -62,7 +69,7 @@ export default function App() {
         }
       />
 
-      {/* 👷 Worker */}
+      {/* 👷 WORKER */}
       <Route
         path="/worker/dashboard"
         element={
@@ -72,7 +79,7 @@ export default function App() {
         }
       />
 
-      {/* 🛠 Admin */}
+      {/* 🛠 ADMIN */}
       <Route
         path="/admin/*"
         element={
@@ -90,10 +97,14 @@ export default function App() {
         <Route path="provider/edit/:id" element={<AdminProviderEdit />} />
         <Route path="contract/:id" element={<ContractManager />} />
         <Route path="pending-debug" element={<PendingWorkersDebug />} />
+
+        {/* 🆕 FOOTER ADMIN PAGE */}
+        <Route path="footer" element={<AdminFooterContent />} />
       </Route>
 
-      {/* Catch-all */}
+      {/* ❌ CATCH ALL */}
       <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

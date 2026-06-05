@@ -1,4 +1,5 @@
 // src/components/FooterWithLike.jsx
+
 import { useEffect, useState } from "react";
 import {
   doc,
@@ -9,13 +10,15 @@ import {
   onSnapshot,
   getDoc,
 } from "firebase/firestore";
-import { db, getSettingsDoc } from "../firebase/config";
+
+import { db } from "../firebase/config";
 
 export default function FooterWithLike({ userId }) {
+
   const currentYear = new Date().getFullYear();
 
   // STATES
-  const [footerText, setFooterText] = useState(`© ${currentYear} Mistri Bondhu`);
+  const [footerText, setFooterText] = useState("");
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [showFooterFull, setShowFooterFull] = useState(false);
@@ -24,71 +27,110 @@ export default function FooterWithLike({ userId }) {
   useEffect(() => {
     const fetchFooter = async () => {
       try {
-        const snap = await getDoc(getSettingsDoc("footerText"));
-        if (snap.exists()) setFooterText(snap.data().text);
+
+        const snap = await getDoc(
+          doc(db, "settings", "footerContent")
+        );
+
+        if (snap.exists()) {
+          setFooterText(snap.data().content || "");
+        }
+
       } catch (err) {
         console.error("Footer fetch error:", err);
       }
     };
+
     fetchFooter();
   }, []);
 
   /* ---------- Realtime Like Listener ---------- */
   useEffect(() => {
+
     const likeRef = doc(db, "likes", "footerLike");
 
     const unsub = onSnapshot(likeRef, (snap) => {
+
       if (snap.exists()) {
+
         const data = snap.data();
+
         setLikes(data.count || 0);
-        setLiked(userId ? data.users?.includes(userId) : false);
+
+        setLiked(
+          userId
+            ? data.users?.includes(userId)
+            : false
+        );
+
       } else {
+
         setLikes(0);
         setLiked(false);
+
       }
+
     });
 
     return () => unsub();
+
   }, [userId]);
 
   /* ---------- Like Action ---------- */
   const handleLike = async (e) => {
+
     e.stopPropagation();
+
     if (!userId) {
       alert("Please login to like!");
       return;
     }
+
     if (liked) return;
 
     const likeRef = doc(db, "likes", "footerLike");
 
     try {
+
       await updateDoc(likeRef, {
         count: increment(1),
         users: arrayUnion(userId),
       });
+
     } catch {
+
       // first time create doc
-      await setDoc(likeRef, { count: 1, users: [userId] });
+      await setDoc(likeRef, {
+        count: 1,
+        users: [userId],
+      });
+
     }
   };
 
   /* ---------- Share Action ---------- */
   const handleShare = (e) => {
+
     e.stopPropagation();
+
     if (navigator.share) {
+
       navigator.share({
         title: "Mistri Bondhu",
         text: "Trusted worker app",
         url: window.location.origin,
       });
+
     } else {
+
       alert("Share not supported on this browser");
+
     }
   };
 
   return (
     <>
+
       <footer
         onClick={() => setShowFooterFull(true)}
         style={{
@@ -105,6 +147,7 @@ export default function FooterWithLike({ userId }) {
           zIndex: 1000,
         }}
       >
+
         {/* 👍 LIKE */}
         <button
           onClick={handleLike}
@@ -138,36 +181,81 @@ export default function FooterWithLike({ userId }) {
           Share
         </button>
 
-        {/* Footer text */}
-        <p style={{ fontSize: 14, margin: 0 }}>
-          © {currentYear} {footerText.replace(/^©\s*\d+\s*/, "")}
+        {/* FOOTER TEXT */}
+        <p
+          style={{
+            fontSize: 14,
+            margin: 0,
+            cursor: "pointer",
+          }}
+        >
+          © {currentYear} Mistri Bondhu
         </p>
+
       </footer>
 
       {/* FULLSCREEN FOOTER MODAL */}
       {showFooterFull && (
+
         <div
           style={{
             position: "fixed",
             inset: 0,
             background: "#fff",
-            padding: 16,
+            padding: 20,
             zIndex: 2000,
+            overflowY: "auto",
           }}
         >
-          <p style={{ fontSize: 18 }}>{footerText}</p>
-          <button
-            onClick={() => setShowFooterFull(false)}
+
+          {/* HEADING */}
+          <h2
             style={{
-              marginTop: 12,
-              padding: "6px 12px",
+              textAlign: "center",
+              color: "#1976D2",
+              fontWeight: "bold",
+              marginBottom: 20,
+            }}
+          >
+            {footerText.split("\n")[0]}
+          </h2>
+
+          {/* CONTENT */}
+          <p
+            style={{
+              color: "#444",
+              lineHeight: 1.8,
+              whiteSpace: "pre-line",
               fontSize: 16,
             }}
           >
-            Close
+            {footerText
+              .split("\n")
+              .slice(1)
+              .join("\n")}
+          </p>
+
+          {/* CLOSE BUTTON */}
+          <button
+            onClick={() => setShowFooterFull(false)}
+            style={{
+              marginTop: 20,
+              padding: "8px 16px",
+              fontSize: 16,
+              borderRadius: 6,
+              border: "none",
+              background: "#1976D2",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            ✖ Close
           </button>
+
         </div>
+
       )}
+
     </>
   );
 }

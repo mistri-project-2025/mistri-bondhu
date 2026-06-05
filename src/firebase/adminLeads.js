@@ -1,31 +1,42 @@
-/**
- * adminLeads.js
- * -----------------------------
- * Admin → Provider leads
- * 5 worker = 1 group
- */
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { db } from "./config";
+import { getNextWorkerGroup } from "./rotationService";
 
-export function sendLeadsToWorkers(provider, workers = []) {
-  if (!provider || !workers.length) return;
+export async function sendLeadsToWorkers(provider, workers) {
+  try {
+    if (!provider || !workers.length) return;
 
-  const existing =
-    JSON.parse(localStorage.getItem("mb_worker_leads")) || [];
+    const categoryWorkers = workers.filter(
+      (w) =>
+        w.categoryId === provider.categoryId &&
+        w.status === "approved"
+    );
 
-  const now = new Date().toISOString();
+    const selectedGroup =
+      await getNextWorkerGroup(categoryWorkers);
 
-  const newLeads = workers.map((w) => ({
-    id: Date.now().toString() + Math.random(),
-    workerId: w.id,
-    workerName: w.name,
-    providerId: provider.phone,
-    providerName: provider.name,
-    providerPhone: provider.phone,
-    contactedAt: now,
-    source: "ADMIN_LEAD",
-  }));
+    for (let w of selectedGroup) {
+      await addDoc(collection(db, "leads"), {
+        providerId: provider.uid || provider.id || provider.phone,
+        workerId: w.uid || w.id,
 
-  localStorage.setItem(
-    "mb_worker_leads",
-    JSON.stringify([...existing, ...newLeads])
-  );
+        category: provider.category,
+        categoryId: provider.categoryId,
+
+        great: w.great,
+        status: "sent",
+
+        contactedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    return {
+      success: true,
+      sentTo: selectedGroup.length,
+    };
+  } catch (err) {
+    console.error(err);
+    return { success: false };
+  }
 }

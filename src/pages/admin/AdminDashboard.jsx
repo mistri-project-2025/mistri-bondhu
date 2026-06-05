@@ -1,4 +1,3 @@
-// src/pages/admin/AdminDashboard.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, Outlet } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -25,12 +24,11 @@ export default function AdminDashboard() {
 
   if (!user || user.role !== "admin") return null;
 
-  // ✅ Logout Function (Dashboard Button থেকে)
   const handleLogout = async () => {
     try {
-      await signOut(auth); // Firebase logout
-      logout();            // Context logout (localStorage clear)
-      navigate("/");       // Home page
+      await signOut(auth);
+      logout();
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -71,20 +69,28 @@ export default function AdminDashboard() {
         <button onClick={() => navigate("/admin/workers")}>
           👷 Workers
         </button>
+
         <button onClick={() => navigate("/admin/providers")}>
           🧑‍💼 Providers
         </button>
+
         <button onClick={() => navigate("/admin/feedback")}>
           💬 Feedback
         </button>
+
         <button onClick={() => navigate("/admin/search")}>
           🔍 Search
         </button>
+
         <button onClick={() => navigate("/admin/leads")}>
           📊 Lead History
         </button>
 
-        {/* ✅ Direct Logout Button */}
+        {/* 🆕 FOOTER CONTENT BUTTON (ADDED) */}
+        <button onClick={() => navigate("/admin/footer")}>
+          📝 Footer Content
+        </button>
+
         <button onClick={handleLogout} style={{ marginTop: 10 }}>
           🚪 Logout
         </button>
@@ -94,6 +100,7 @@ export default function AdminDashboard() {
 
       {/* Notifications */}
       <h3>🔔 Provider Search Notifications</h3>
+
       <div style={{ marginBottom: 10 }}>
         <button onClick={markAllRead}>✅ Mark all as read</button>{" "}
         <button onClick={clearAll}>❌ Clear all</button>
@@ -116,17 +123,14 @@ export default function AdminDashboard() {
           <b>👤 Provider:</b> {n.providerName} <br />
           <b>📞 Phone:</b> {n.providerPhone} <br />
           <b>📍 Pincode:</b> {n.providerPincode} <br />
-          <b>🔍 Category:</b>{" "}
-          {getCategoryLabel(n.searchedCategory)} <br />
-          <b>⏰ Time:</b>{" "}
-          {new Date(n.createdAt).toLocaleString()} <br />
+          <b>🔍 Category:</b> {getCategoryLabel(n.searchedCategory)} <br />
+          <b>⏰ Time:</b> {new Date(n.createdAt).toLocaleString()} <br />
           <b>Status:</b> {n.read ? "✅ Read" : "🔴 New"}
         </div>
       ))}
 
       <hr />
 
-      {/* Nested Route Render */}
       <Outlet />
     </div>
   );

@@ -1,101 +1,168 @@
+// src/pages/admin/AdminLeadHistory.jsx
+
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { getCategoryLabel } from "../../utils/categories";
+
+import {
+  getDocs,
+} from "firebase/firestore";
+
+import {
+  leadsCollection,
+} from "../../firebase/config";
 
 export default function AdminLeadHistory() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [leads, setLeads] = useState([]);
+
+  const [leads, setLeads] =
+    useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== "admin") {
-      navigate("/role");
-      return;
-    }
 
-    const allLeads = JSON.parse(
-      localStorage.getItem("mb_worker_leads") || "[]"
-    );
+    const loadLeads =
+      async () => {
 
-    const now = Date.now();
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+        try {
 
-    // 🔥 remove old leads
-    const validLeads = allLeads.filter(
-      (l) => now - new Date(l.contactedAt).getTime() <= THIRTY_DAYS
-    );
+          const snap =
+            await getDocs(
+              leadsCollection
+            );
 
-    // 🔥 latest first
-    validLeads.sort(
-      (a, b) =>
-        new Date(b.contactedAt).getTime() -
-        new Date(a.contactedAt).getTime()
-    );
+          const now =
+            Date.now();
 
-    localStorage.setItem("mb_worker_leads", JSON.stringify(validLeads));
-    setLeads(validLeads);
-  }, [user, navigate]);
+          const LIMIT =
+            30 *
+            24 *
+            60 *
+            60 *
+            1000;
 
-  if (!user || user.role !== "admin") {
-    return <p>Admin login required</p>;
-  }
+          const filtered =
+            snap.docs
+              .map((d) => ({
+                id: d.id,
+                ...d.data(),
+              }))
+              .filter(
+                (l) =>
+                  now -
+                    new Date(
+                      l.contactedAt
+                    ).getTime() <=
+                  LIMIT
+              );
+
+          setLeads(filtered);
+
+        } catch (err) {
+
+          console.error(err);
+
+        }
+
+      };
+
+    loadLeads();
+
+  }, []);
 
   return (
-    <div style={{ padding: 20, maxWidth: 800 }}>
-      <h2>📊 Lead History</h2>
-      <p style={{ color: "#555" }}>
-        Provider → Worker contact history (last 30 days)
+
+    <div style={{ padding: 20 }}>
+
+      <h2>
+        📊 Lead History
+      </h2>
+
+      <p>
+        Provider → Worker
+        contact history
+        (last 30 days)
       </p>
 
-      <hr />
+      {leads.length === 0 ? (
 
-      {leads.length === 0 && <p>No leads found 😕</p>}
+        <p>
+          No lead history
+        </p>
 
-      {leads.map((l) => (
-        <div
-          key={l.id}
-          style={{
-            border: "1px solid #ccc",
-            padding: 12,
-            marginBottom: 12,
-            borderRadius: 8,
-            background: "#fafafa",
-          }}
-        >
-          {/* Provider */}
-          <h4>🧑‍💼 Provider</h4>
-          <p><b>Name:</b> {l.providerName}</p>
-          <p><b>Phone:</b> {l.providerPhone}</p>
-          <p><b>Pincode:</b> {l.providerPincode}</p>
+      ) : (
 
-          <hr />
+        leads.map((l) => (
 
-          {/* Worker */}
-          <h4>👷 Worker</h4>
-          <p><b>Name:</b> {l.workerName}</p>
-          <p><b>Phone:</b> {l.workerPhone}</p>
+          <div
+            key={l.id}
+            style={{
+              border:
+                "1px solid #ccc",
+              padding: 12,
+              borderRadius: 8,
+              marginBottom: 12,
+              background: "#fff",
+            }}
+          >
 
-          {/* 🔥 NEW ADD */}
-          <p>
-            <b>Category:</b>{" "}
-            {getCategoryLabel(l.categoryId || l.category)}
-          </p>
+            <h4>
+              🧑‍💼 Provider
+            </h4>
 
-          <p>
-            <b>Great:</b>{" "}
-            <span style={{ color: "green", fontWeight: "bold" }}>
-              {l.great || "N/A"}
-            </span>
-          </p>
+            <p>
+              Name:{" "}
+              {l.providerName}
+            </p>
 
-          {/* Time */}
-          <p style={{ marginTop: 8 }}>
-            ⏰ <b>Contacted At:</b>{" "}
-            {new Date(l.contactedAt).toLocaleString()}
-          </p>
-        </div>
-      ))}
+            <p>
+              Phone:{" "}
+              {l.providerPhone}
+            </p>
+
+            <p>
+              Pincode:{" "}
+              {l.providerPincode}
+            </p>
+
+            <hr />
+
+            <h4>
+              👷 Worker
+            </h4>
+
+            <p>
+              Name:{" "}
+              {l.workerName}
+            </p>
+
+            <p>
+              Phone:{" "}
+              {l.workerPhone}
+            </p>
+
+            <p>
+              Category:{" "}
+              {l.category}
+            </p>
+
+            <p>
+              Great:{" "}
+              {l.great}
+            </p>
+
+            <p>
+              ⏰ Contacted
+              At:{" "}
+              {new Date(
+                l.contactedAt
+              ).toLocaleString()}
+            </p>
+
+          </div>
+
+        ))
+
+      )}
+
     </div>
+
   );
+
 }

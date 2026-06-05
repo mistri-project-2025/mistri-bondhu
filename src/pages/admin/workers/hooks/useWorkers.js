@@ -1,6 +1,7 @@
 // src/pages/admin/workers/hooks/useWorkers.js
 
 import { useEffect, useState } from "react";
+
 import {
   collection,
   getDocs,
@@ -17,47 +18,41 @@ import {
 import { db } from "../../../../firebase/config";
 
 export default function useWorkers() {
+
   const [pending, setPending] = useState([]);
   const [approved, setApproved] = useState([]);
   const [expired, setExpired] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // =====================
-  // 🔥 EXPIRY CHECK
+  // LOAD WORKERS
   // =====================
-  const checkExpiry = async (workers) => {
-    const now = new Date();
 
-    for (let w of workers) {
-      if (!w.contractEnd) continue;
+  const loadWorkers = async (showLoading = true) => {
 
-      const end = new Date(w.contractEnd);
-
-      if (end < now && w.status === "approved") {
-        await updateDoc(doc(db, "workers", w.id), {
-          status: "expired",
-          updatedAt: serverTimestamp(),
-        });
-      }
-    }
-  };
-
-  // =====================
-  // 🔥 LOAD WORKERS
-  // =====================
-  const loadWorkers = async () => {
     try {
-      setLoading(true);
 
-      const pSnap = await getDocs(collection(db, "pendingWorkers"));
+      if (showLoading) {
+        setLoading(true);
+      }
+
+      // pending
+      const pSnap = await getDocs(
+        collection(db, "pendingWorkers")
+      );
+
       const pendingList = pSnap.docs.map((d) => ({
         id: d.id,
         ...d.data(),
         status: "pending",
       }));
 
+      // approved
       const aSnap = await getDocs(
-        query(collection(db, "workers"), where("status", "==", "approved"))
+        query(
+          collection(db, "workers"),
+          where("status", "==", "approved")
+        )
       );
 
       const approvedList = aSnap.docs.map((d) => ({
@@ -66,8 +61,12 @@ export default function useWorkers() {
         status: "approved",
       }));
 
+      // expired
       const eSnap = await getDocs(
-        query(collection(db, "workers"), where("status", "==", "expired"))
+        query(
+          collection(db, "workers"),
+          where("status", "==", "expired")
+        )
       );
 
       const expiredList = eSnap.docs.map((d) => ({
@@ -76,112 +75,266 @@ export default function useWorkers() {
         status: "expired",
       }));
 
-      await checkExpiry(approvedList);
-
       setPending(pendingList);
       setApproved(approvedList);
       setExpired(expiredList);
+
     } catch (err) {
+
       console.error("useWorkers error:", err);
+
     } finally {
-      setLoading(false);
+
+      if (showLoading) {
+        setLoading(false);
+      }
+
     }
+
   };
 
   // =====================
-  // 🔥 APPROVE WORKER
+  // AUTO EXPIRY CHECK
   // =====================
-  const approvePendingWorker = async (workerId, great, contractEnd) => {
+
+  const checkExpiry = async () => {
+
     try {
-      if (!great) return alert("Select Great ❌");
+
+      const aSnap = await getDocs(
+        query(
+          collection(db, "workers"),
+          where("status", "==", "approved")
+        )
+      );
+
+      const approvedList = aSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      const now = new Date();
+
+      for (let w of approvedList) {
+
+        if (!w.contractEnd) continue;
+
+        const end = new Date(w.contractEnd);
+
+        // expired
+        if (end < now) {
+
+          await updateDoc(doc(db, "workers", w.id), {
+            status: "expired",
+            approved: false,
+            updatedAt: serverTimestamp(),
+          });
+
+        }
+
+      }
+
+      // 🔥 background refresh only
+      await loadWorkers(false);
+
+    } catch (err) {
+
+      console.error("Expiry error:", err);
+
+    }
+
+  };
+
+  // =====================
+  // APPROVE WORKER
+  // =====================
+
+  const approvePendingWorker = async (
+    workerId,
+    great,
+    contractEnd
+  ) => {
+
+    try {
+
+      if (!great) {
+        alert("Select Great ❌");
+        return;
+      }
 
       const ref = doc(db, "pendingWorkers", workerId);
+
       const snap = await getDoc(ref);
 
-      if (!snap.exists()) return alert("Worker not found ❌");
+      if (!snap.exists()) {
+        alert("Worker not found ❌");
+        return;
+      }
 
       const data = snap.data();
 
       let finalEnd = contractEnd;
 
-      // 🔥 AUTO RULE
+      // auto duration
       if (!finalEnd) {
+
         const end = new Date();
 
+        // A+ B+ C+ = 12 month
         if (["A+", "B+", "C+"].includes(great)) {
+
           end.setMonth(end.getMonth() + 12);
+
         } else {
+
+          // A B C = 1 month
           end.setMonth(end.getMonth() + 1);
+
         }
 
         finalEnd = end.toISOString();
+
       }
 
+      // save approved worker
       await setDoc(doc(db, "workers", workerId), {
+
         ...data,
+
         great,
+
         status: "approved",
+
         approved: true,
+
         approvalDate: new Date().toISOString(),
+
         contractEnd: finalEnd,
+
       });
 
+      // remove pending
       await deleteDoc(ref);
-      await loadWorkers();
+
+      await loadWorkers(false);
 
       alert("Worker Approved ✅");
+
     } catch (err) {
+
       console.error(err);
+
       alert("Approval failed ❌");
+
     }
+
   };
 
   // =====================
-  // 🔥 EXTEND
+  // EXTEND / RE-APPROVE
   // =====================
-  const extendApprovedWorker = async (workerId, contractEnd) => {
+
+  const extendApprovedWorker = async (
+    workerId,
+    contractEnd
+  ) => {
+
     try {
+
+      let finalEnd = contractEnd;
+
+      // normal extend
+      if (!finalEnd) {
+
+        const end = new Date();
+
+        end.setMonth(end.getMonth() + 1);
+
+        finalEnd = end.toISOString();
+
+      }
+
       await updateDoc(doc(db, "workers", workerId), {
-        contractEnd,
+
+        status: "approved",
+
+        approved: true,
+
+        contractEnd: finalEnd,
+
         updatedAt: serverTimestamp(),
+
       });
 
-      await loadWorkers();
-      alert("Extended ✅");
+      await loadWorkers(false);
+
+      alert("Worker Re-Approved ✅");
+
     } catch (err) {
+
       console.error(err);
+
+      alert("Extend Failed ❌");
+
     }
+
   };
 
   // =====================
-  // 🔥 DELETE
+  // DELETE
   // =====================
+
   const deleteWorker = async (id) => {
-    await deleteDoc(doc(db, "workers", id));
-    await loadWorkers();
+
+    try {
+
+      await deleteDoc(doc(db, "workers", id));
+
+      await loadWorkers(false);
+
+    } catch (err) {
+
+      console.error(err);
+
+    }
+
   };
 
   // =====================
-  // 🔥 AUTO REFRESH (SAFE)
+  // FIRST LOAD
   // =====================
+
   useEffect(() => {
+
     loadWorkers();
 
+    // 🔥 ONLY expiry check
+    // no full reload feel
+
     const interval = setInterval(() => {
-      loadWorkers(); // only data refresh, no UI reset problem
+
+      checkExpiry();
+
     }, 30000);
 
     return () => clearInterval(interval);
+
   }, []);
 
   return {
+
     pending,
     approved,
     expired,
     loading,
+
     approvePendingWorker,
     extendApprovedWorker,
     deleteWorker,
+
     reload: loadWorkers,
+
   };
+
 }
+
