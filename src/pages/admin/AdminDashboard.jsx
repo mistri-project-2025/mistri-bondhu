@@ -1,137 +1,50 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Outlet } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { getCategoryLabel } from "../../utils/categories";
-import { signOut } from "firebase/auth";
-import { auth } from "../../firebase/config";
-
-export default function AdminDashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [notifications, setNotifications] = useState([]);
+import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";                                    import { getCategoryLabel } from "../../utils/categories";
+import { signOut } from "firebase/auth";    import { auth } from "../../firebase/config";                                                                                       export default function AdminDashboard() {    const { user, logout } = useAuth();         const navigate = useNavigate();             const location = useLocation();             const [showModal, setShowModal] = useState(false);                                                                                  useEffect(() => {                             if (!user || user.role !== "admin") {         navigate("/role");                        }                                         }, [user, navigate]);
 
   useEffect(() => {
-    if (!user || user.role !== "admin") {
-      navigate("/role");
-      return;
+    if (location.pathname !== "/admin" && location.pathname !== "/admin/") {
+      setShowModal(true);
     }
-
-    const noti = JSON.parse(
-      localStorage.getItem("mb_admin_notifications") || "[]"
-    );
-    setNotifications(noti);
-  }, [user, navigate]);
+  }, [location.pathname]);
 
   if (!user || user.role !== "admin") return null;
 
   const handleLogout = async () => {
-    try {
-      await signOut(auth);
-      logout();
-      navigate("/");
-    } catch (error) {
-      console.error("Logout error:", error);
-    }
+    await signOut(auth);
+    logout();
+    navigate("/");
   };
 
-  const markAllRead = () => {
-    const updated = notifications.map((n) => ({ ...n, read: true }));
-    setNotifications(updated);
-    localStorage.setItem(
-      "mb_admin_notifications",
-      JSON.stringify(updated)
-    );
+  const openInModal = (path) => {
+    navigate(path);
+    setShowModal(true);
   };
 
-  const clearAll = () => {
-    if (!window.confirm("Clear all notifications?")) return;
-    setNotifications([]);
-    localStorage.setItem("mb_admin_notifications", JSON.stringify([]));
+  const closeModal = () => {
+    setShowModal(false);
+    navigate("/admin");
   };
 
-  const providerSearchNoti = notifications.filter(
-    (n) => n.type === "PROVIDER_SEARCH"
-  );
-
-  return (
-    <div style={{ padding: 20 }}>
-      <h1>👑 Admin Dashboard</h1>
-
-      {/* Navigation Buttons */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          marginBottom: 30,
-        }}
-      >
-        <button onClick={() => navigate("/admin/workers")}>
-          👷 Workers
-        </button>
-
-        <button onClick={() => navigate("/admin/providers")}>
-          🧑‍💼 Providers
-        </button>
-
-        <button onClick={() => navigate("/admin/feedback")}>
-          💬 Feedback
-        </button>
-
-        <button onClick={() => navigate("/admin/search")}>
-          🔍 Search
-        </button>
-
-        <button onClick={() => navigate("/admin/leads")}>
-          📊 Lead History
-        </button>
-
-        {/* 🆕 FOOTER CONTENT BUTTON (ADDED) */}
-        <button onClick={() => navigate("/admin/footer")}>
-          📝 Footer Content
-        </button>
-
-        <button onClick={handleLogout} style={{ marginTop: 10 }}>
-          🚪 Logout
-        </button>
+  const btn = (bg) => ({
+    padding: "14px", border: "none", borderRadius: 12, fontWeight: "bold",                  background: bg, color: "#fff", cursor: "pointer", fontSize: 15
+  });
+                                              return (
+    <div style={{ padding: 15, background: "#f0f4ff", minHeight: "100vh" }}>
+      <h2 style={{ textAlign: "center" }}>Admin Dashboard</h2>
+                                                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 400, margin: "0 auto" }}>
+        <button onClick={() => openInModal("/admin/workers")} style={btn("#2196F3")}>Workers</button>
+        <button onClick={() => openInModal("/admin/workers/groups")} style={btn("#9C27B0")}>Worker Groups Pro</button>                      <button onClick={() => openInModal("/admin/providers")} style={btn("#009688")}>Providers</button>
+        <button onClick={() => openInModal("/admin/feedback")} style={btn("#FF9800")}>Feedback</button>
+        <button onClick={() => openInModal("/admin/search")} style={btn("#3F51B5")}>Search</button>
+        <button onClick={() => openInModal("/admin/leads")} style={btn("#607D8B")}>Lead History</button>
+        <button onClick={() => openInModal("/admin/activities")} style={btn("#4CAF50")}>Lead Activities</button>
+        <button onClick={() => openInModal("/admin/fix-groups")} style={btn("#FF5722")}>Fix Worker Groups</button>                          <button onClick={() => openInModal("/admin/footer")} style={btn("#795548")}>Footer Content</button>
+        <button onClick={handleLogout} style={btn("#212121")}>Logout</button>
       </div>
 
-      <hr />
-
-      {/* Notifications */}
-      <h3>🔔 Provider Search Notifications</h3>
-
-      <div style={{ marginBottom: 10 }}>
-        <button onClick={markAllRead}>✅ Mark all as read</button>{" "}
-        <button onClick={clearAll}>❌ Clear all</button>
-      </div>
-
-      {providerSearchNoti.length === 0 && (
-        <p>No provider search notifications</p>
-      )}
-
-      {providerSearchNoti.map((n) => (
-        <div
-          key={n.id}
-          style={{
-            border: "1px solid #ccc",
-            padding: 10,
-            marginBottom: 10,
-            background: n.read ? "#f9f9f9" : "#fff3cd",
-          }}
-        >
-          <b>👤 Provider:</b> {n.providerName} <br />
-          <b>📞 Phone:</b> {n.providerPhone} <br />
-          <b>📍 Pincode:</b> {n.providerPincode} <br />
-          <b>🔍 Category:</b> {getCategoryLabel(n.searchedCategory)} <br />
-          <b>⏰ Time:</b> {new Date(n.createdAt).toLocaleString()} <br />
-          <b>Status:</b> {n.read ? "✅ Read" : "🔴 New"}
-        </div>
-      ))}
-
-      <hr />
-
-      <Outlet />
-    </div>
-  );
-}
+      {showModal && (
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "#fff", zIndex: 99999, display: "flex", flexDirection: "column" }}>                <div style={{ padding: 12, background: "#2196F3", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <b style={{ color: "#fff" }}>{location.pathname}</b>                                    <button onClick={closeModal} style={{ background: "#fff", color: "red", border: "none", padding: "8px 16px", borderRadius: 20, fontWeight: "bold" }}>X Close</button>                                                     </div>                                      <div style={{ flex: 1, overflowY: "auto", padding: 10 }}>                                 <Outlet />                                </div>                                    </div>
+      )}                                        </div>                                    );                                        }

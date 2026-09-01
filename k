@@ -1,256 +1,360 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { getCategoryLabel } from "../utils/categories";
-
-export default function Home() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const [showRoleSelect, setShowRoleSelect] = useState(false);
-  const [showFooterContent, setShowFooterContent] = useState(false);
-
-  const lang = "bn";
-  const title = lang === "bn" ? "মিস্ত্রি বন্ধু" : "Mistri Bondhu";
-  const subtitle =
-    lang === "bn"
-      ? "বিশ্বাসযোগ্য মিস্ত্রি আপনার পাশে"
-      : "Trusted workers near you";
-
-  const placeholder =
-    lang === "bn"
-      ? "মিস্ত্রি / প্রোভাইডার খুঁজুন..."
-      : "Search worker / provider...";
-
-  const currentYear = new Date().getFullYear();
-
-  const onSearchClick = () => {
-    if (!user) setShowRoleSelect(true);
-  };
-
-  const onSelectRole = (role) => {
-    setShowRoleSelect(false);
-    if (role === "worker") navigate("/signup/worker");
-    if (role === "provider") navigate("/provider/search");
-  };
-
-  /* =========================
-     🌐 PUBLIC HOME
-     ========================= */
-  if (!user) {
-    return (
-      <>
-        <div
+k          borderRadius: 10,
+          marginBottom: 20,
+          background: "#fafafa",
+        }}
+      >
+        <h3>🔎 Search Workers</h3>
+        <input
+          type="text"
+          placeholder="Search Name / Phone / Pincode / Address / Business Name / Category"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            paddingTop: 60,
-            paddingBottom: 120,
-            background: "#fafafa",
+            width: "100%",
+            padding: 12,
+            borderRadius: 8,
+            border: "1px solid #ccc",
           }}
-        >
-          {/* TITLE */}
-          <h1 style={{ fontSize: 44, fontWeight: "800", marginBottom: 6 }}>
-            {title}
-          </h1>
-          <p style={{ color: "#4A90E2", fontSize: 18, marginBottom: 40, fontWeight: "500" }}>
-            {subtitle}
-          </p>
+        />
+      </div>
 
-          {/* SEARCH BAR */}
+      {filteredWorkers.length === 0 && <p>No workers found ❌</p>}
+
+      {filteredWorkers.map((worker) => {
+        const displayGroupLabel =
+          worker.groupNo && worker.great
+            ? `${getCategoryLabel(worker.categoryId)}${worker.groupNo}${worker.great}`
+            : worker.groupLabel || "No Group";
+
+        return (
           <div
-            onClick={onSearchClick}
+            key={worker.id}
             style={{
-              width: "90%",
-              maxWidth: 420,
-              background: "#fff",
-              border: "1px solid #ddd",
-              borderRadius: 30,
-              padding: "14px 20px",
-              cursor: "pointer",
-              fontSize: 16,
-              color: "#555",
-              boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-              marginBottom: 36,
+              border: "1px solid #ccc",
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 12,
             }}
           >
-            🔍 {placeholder}
-          </div>
+            <b>👤 {worker.name}</b>
+            <br />
+            📞 {worker.phone}
+            <br />
+            📍 {worker.pincode}
+            <br />
+            🏠 Address: {worker.address || "N/A"}
+            <br />
+            🏢 Business: {worker.companyName || "N/A"}
+            <br />
+            🛠 {worker.category}
+            <br />
+            <p>Group: {displayGroupLabel}</p>
+            <p>No: {worker.groupNo}</p>
 
-          {/* ROLE SELECT */}
-          {showRoleSelect && (
+            {worker.great && (
+              <>
+                ⭐ <b>Great:</b> {worker.great}
+                <br />
+              </>
+            )}
+            {worker.approvalDate && (
+              <>
+                🕒 <b>Approved:</b>{" "}
+                {new Date(worker.approvalDate).toLocaleString()}
+                <br />
+              </>
+            )}
+
+            {worker.contractEnd && (
+              <>
+                ⏰ <b>Ends:</b>{" "}
+                {new Date(worker.contractEnd).toLocaleString()}
+                <br />
+              </>
+            )}
+
+            {worker.contractEnd && (
+              <>
+                📅 <b>Remaining:</b>{" "}
+                {(() => {
+                  const now = new Date();
+                  const end = new Date(worker.contractEnd);
+                  const diff = end - now;
+                  if (diff <= 0) {
+                    return "Expired ❌";
+                  }
+                  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+                  return `${days} Days ${hours} Hours ${minutes} Minutes`;
+                })()}
+                <br />
+              </>
+            )}
+            <b>Status:</b>{" "}
+            {worker.status === "pending"
+              ? "♥️ Pending"
+              : worker.status === "approved"
+              ? "💚 Approved"
+              : "♠️ Expired"}
+            
+            {worker.status === "pending" && (
+              <div style={{ marginTop: 8 }}>
+                <select
+                  value={selectedGreat[worker.id] || ""}
+                  onChange={(e) =>
+                    setSelectedGreat((prev) => ({
+                      ...prev,
+                      [worker.id]: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select Great</option>
+                  <option value="A+">A+</option>
+                  <option value="A">A</option>
+                  <option value="B+">B+</option>
+                  <option value="B">B</option>
+                  <option value="C+">C+</option>
+                  <option value="C">C</option>
+                </select>
+              </div>
+            )}
+
             <div
               style={{
-                marginTop: 12,
-                width: "90%",
-                maxWidth: 420,
-                background: "#fff",
-                borderRadius: 14,
-                padding: 16,
-                boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                marginTop: 10,
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
               }}
             >
-              <p style={{ marginBottom: 14, fontWeight: "600" }}>
-                আপনি কী খুঁজছেন?
-              </p>
-
-              <button style={btnStyle} onClick={() => onSelectRole("worker")}>
-                👷 Worker
+              <button
+                onClick={() => setEditModal({ open: true, worker: worker })}
+                style={{
+                  background: "#2196F3",
+                  color: "#fff",
+                  border: "none",
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                }}
+              >
+                ✏️ Edit
               </button>
+
+              {worker.status === "pending" && (
+                <button
+                  onClick={() => {
+                    if (!selectedGreat[worker.id]) {
+                      alert("Select Great first");
+                      return;
+                    }
+                    setCalendarWorker({
+                      ...worker,
+                      great: selectedGreat[worker.id],
+                    });
+                    setIsExtend(false);
+                  }}
+                >
+                  📅 Approve
+                </button>
+              )}
+
+              {worker.status === "approved" && (
+                <button
+                  onClick={() => {
+                    setCalendarWorker({
+                      ...worker,
+                      selectedGreat: worker.great || "A+",
+                    });
+                    setIsExtend(true);
+                  }}
+                >
+                  ⏳ Extend
+                </button>
+              )}
+
+              {worker.status === "expired" && (
+                <button
+                  onClick={() => {
+                    setCalendarWorker({
+                      ...worker,
+                      selectedGreat: worker.great || "A+",
+                    });
+                    setIsExtend(true);
+                  }}
+                >
+                  🔄 Re-Approve
+                </button>
+              )}
 
               <button
-                style={btnStyle}
-                onClick={() => onSelectRole("provider")}
+                onClick={() => {
+                  if (window.confirm("Delete this worker?")) {
+                    deleteWorker(worker.id);
+                  }
+                }}
+                style={{ color: "red" }}
               >
-                🧑‍💼 Provider
+                🗑 Delete
               </button>
             </div>
-          )}
-
-          {/* ABOUT CONTENT */}
-          <div
-            style={{
-              marginTop: 40,
-              maxWidth: 640,
-              background: "#f0f8ff",
-              borderRadius: 18,
-              padding: 22,
-              lineHeight: 1.8,
-              color: "#333",
-              boxShadow: "0 6px 20px rgba(0,0,0,0.05)",
-            }}
-          >
-            <p style={{ marginBottom: 12 }}>
-              <b>মিস্ত্রি বন্ধু</b> এমন একটি ডিজিটাল প্ল্যাটফর্ম যেখানে আপনি খুব সহজেই নিজের এলাকার দক্ষ ও যাচাই করা মিস্ত্রি এবং সার্ভিস প্রোভাইডার খুঁজে পাবেন।
-            </p>
-            <p style={{ marginBottom: 12 }}>
-              কোনো দালাল নেই, কোনো বাড়তি ঝামেলা নেই। সরাসরি যোগাযোগ করে কাজের প্রয়োজন অনুযায়ী সিদ্ধান্ত নিন।
-            </p>
-            <p>
-              আপনি যদি মিস্ত্রি হন, এখানে পাবেন নতুন কাজের সুযোগ। আর যদি কাজের লোক খুঁজে থাকেন, মিস্ত্রি বন্ধু সবসময় আপনার পাশে।
-            </p>
           </div>
+        );
+      })}
 
-          {import.meta.env.DEV && (
-            <button
-              style={devBtnStyle}
-              onClick={() => {
-                localStorage.setItem(
-                  "mb_user",
-                  JSON.stringify({
-                    role: "admin",
-                    name: "System Admin",
-                    phone: "9999999999",
-                  })
-                );
-                window.location.reload();
-              }}
-            >
-              🔐 Admin Login (DEV)
-            </button>
-          )}
-        </div>
+      {calendarWorker && (
+        <WorkerCalendar
+          worker={calendarWorker}
+          approvePendingWorker={approvePendingWorker}
+          extendApprovedWorker={extendApprovedWorker}
+          isExtend={isExtend}
+          onClose={() => setCalendarWorker(null)}
+        />
+      )}
 
-        {/* FOOTER */}
+      {editModal.open && (
         <div
-          onClick={() => setShowFooterContent(true)}
           style={{
             position: "fixed",
-            bottom: 24,
-            width: "100%",
-            textAlign: "center",
-            fontSize: 14,
-            color: "#666",
-            cursor: "pointer",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
           }}
         >
-          © {currentYear} মিস্ত্রি বন্ধু
-        </div>
-
-        {/* FOOTER FULL SCREEN */}
-        {showFooterContent && (
           <div
             style={{
-              position: "fixed",
-              inset: 0,
               background: "#fff",
-              zIndex: 999,
               padding: 20,
+              borderRadius: 10,
+              minWidth: 350,
+              maxHeight: "80vh",
               overflowY: "auto",
             }}
           >
-            <button
-              onClick={() => setShowFooterContent(false)}
-              style={{
-                marginBottom: 20,
-                padding: "8px 14px",
-                borderRadius: 8,
-                border: "1px solid #ccc",
-                cursor: "pointer",
-              }}
-            >
-              ✖ Close
-            </button>
-
-            <h2>Admin Notice</h2>
+            <h3>✏️ Edit Worker</h3>
             <p>
-              এখানে অ্যাডমিন অ্যাপ সম্পর্কিত নিয়ম, শর্ত, আপডেট বা গুরুত্বপূর্ণ ঘোষণা প্রকাশ করতে পারবেন।
+              <b>{editModal.worker?.name}</b>
             </p>
+
+            <label>Name:</label>
+            <input
+              type="text"
+              defaultValue={editModal.worker?.name}
+              id="edit-name"
+              style={{ width: "100%", padding: 8, marginBottom: 10 }}
+            />
+
+            <label>Phone:</label>
+            <input
+              type="text"
+              defaultValue={editModal.worker?.phone}
+              id="edit-phone"
+              style={{ width: "100%", padding: 8, marginBottom: 10 }}
+            />
+
+            <label>Pincode:</label>
+            <input
+              type="text"
+              defaultValue={editModal.worker?.pincode}
+              id="edit-pincode"
+              style={{ width: "100%", padding: 8, marginBottom: 10 }}
+            />
+
+            <label>Address:</label>
+            <input
+              type="text"
+              defaultValue={editModal.worker?.address}
+              id="edit-address"
+              style={{ width: "100%", padding: 8, marginBottom: 10 }}
+            />
+
+            <label>Business Name:</label>
+            <input
+              type="text"
+              defaultValue={editModal.worker?.companyName}
+              id="edit-companyName"
+              style={{ width: "100%", padding: 8, marginBottom: 10 }}
+            />
+
+            <label>Great:</label>
+            <select
+              defaultValue={editModal.worker?.great}
+              id="edit-great"
+              style={{ width: "100%", padding: 8, marginBottom: 15 }}
+            >
+              <option>A+</option>
+              <option>A</option>
+              <option>B+</option>
+              <option>B</option>
+              <option>C+</option>
+              <option>C</option>
+            </select>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => {
+                  const updatedData = {
+                    name: document.getElementById("edit-name").value,
+                    phone: document.getElementById("edit-phone").value,
+                    pincode: document.getElementById("edit-pincode").value,
+                    address: document.getElementById("edit-address").value,
+                    companyName: document.getElementById("edit-companyName").value,
+                    great: document.getElementById("edit-great").value,
+                  };
+                  handleUpdateWorker(updatedData);
+                }}
+                style={{
+                  flex: 1,
+                  background: "#4CAF50",
+                  color: "#fff",
+                  padding: 10,
+                  border: "none",
+                  borderRadius: 6,
+                }}
+              >
+                ✅ Save
+              </button>
+              <button
+                onClick={() => setEditModal({ open: false, worker: null })}
+                style={{
+                  flex: 1,
+                  background: "#999",
+                  color: "#fff",
+                  padding: 10,
+                  border: "none",
+                  borderRadius: 6,
+                }}
+              >
+                ❌ Cancel
+              </button>
+            </div>
           </div>
-        )}
-      </>
-    );
-  }
-
-  /* =========================
-     👷 LOGGED IN VIEW
-     ========================= */
-  return (
-    <div style={{ padding: 20 }}>
-      <h2>Welcome, {user.name}</h2>
-      <p><b>Role:</b> {user.role}</p>
-
-      {user.role === "worker" && (
-        <>
-          <p>
-            <b>Status:</b>{" "}
-            {user.status === "approved" ? "💚 Approved" : "⏳ Pending"}
-          </p>
-          <p><b>Category:</b> {getCategoryLabel(user.categoryId)}</p>
-          <button style={btnStyle} onClick={() => navigate("/worker/dashboard")}>
-            Go to Dashboard
-          </button>
-        </>
+        </div>
       )}
-
-      {user.role === "provider" && (
-        <button style={btnStyle} onClick={() => navigate("/provider/search")}>
-          🔍 Search Workers
-        </button>
-      )}
-
-      {user.role === "admin" && (
-        <button style={btnStyle} onClick={() => navigate("/admin")}>
-          🛠 Admin Dashboard
-        </button>
-      )}
-
-      <button onClick={logout} style={btnStyle}>Logout</button>
     </div>
   );
 }
 
-const btnStyle = {
-  width: "100%",
-  padding: 14,
-  marginBottom: 10,
-  borderRadius: 10,
-  border: "1px solid #ccc",
-  background: "#f9f9f9",
-  cursor: "pointer",
-  fontSize: 16,
-};
-
-const devBtnStyle = { ...btnStyle, background: "black", color: "white" };
+function Tab({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        background: active ? "#1f2937" : "#e5e7eb",
+        color: active ? "#fff" : "#000",
+        border: "none",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
